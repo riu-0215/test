@@ -8,9 +8,13 @@ from PIL import Image, ImageSequence
 pygame.init()
 pygame.mixer.init()
 pygame.mixer.set_num_channels(8)
-# チャンネル0を叩きつけ音などの重要効果音専用に予約。
-# BGM(mixer.music)は別チャンネルなので影響なく、他の効果音と被って叩きつけ音が消えるのを防ぐ。
-pygame.mixer.set_reserved(1)
+# チャンネル0: 叩きつけ音専用
+# チャンネル1: ダッシュ踏み込み音専用
+# チャンネル2: ダッシュ中ループ音専用
+# BGM(mixer.music)は別チャンネルなので影響なく、他の効果音と被って音が消えるのを防ぐ。
+pygame.mixer.set_reserved(3)  # チャンネル0,1,2を予約
+# チャンネル2（ダッシュ中ループ音）の音量を最大に設定。BGMに負けないよう力強く鳴る。
+pygame.mixer.Channel(2).set_volume(1.0)
 
 # 画面設定
 SCREEN_WIDTH = 800
@@ -612,6 +616,9 @@ normal_boss_background = load_sprite(
     (SCREEN_WIDTH, SCREEN_HEIGHT),
     fallback_color=(0, 0, 0)
 )
+# ステージ4(唐笠お化け)とステージ5(鬼)の背景を下にずらす量。
+# 背景画像に描かれた床と、プレイヤーの足場位置(ground_top=535)を合わせるため。
+BOSS_BACKGROUND_OFFSET_Y = 30
 # 練習場(ステージ1)の背景。神殿.pngを使う(無い場合は白背景に切り替える)。
 practice_background = None
 try:
@@ -888,13 +895,41 @@ if slam_sound_path.exists():
 else:
     print(f"叩きつけ音が見つかりません: {slam_sound_path}")
 
+# 中級ボス(赤鬼)のダッシュ攻撃用の効果音。
+# 一番最初の踏み込みに「踏み込み.mp3」、ダッシュ中は「ダッシュ中.mp3」をループ再生。
+DASH_START_VOLUME = 1.0
+dash_start_sound = None
+dash_start_sound_path = asset_dir / "踏み込み.mp3"
+if dash_start_sound_path.exists():
+    try:
+        dash_start_sound = pygame.mixer.Sound(str(dash_start_sound_path))
+        dash_start_sound.set_volume(DASH_START_VOLUME)
+    except Exception as exc:
+        print(f"踏み込み音の読み込みに失敗しました: {exc}")
+else:
+    print(f"踏み込み音が見つかりません: {dash_start_sound_path}")
+
+DASH_LOOP_VOLUME = 1.0
+# ダッシュ中ループ音の再生間隔（フレーム）。短くするほどタイトに繰り返し鳴る。
+DASH_LOOP_INTERVAL_FRAMES = 4
+dash_loop_sound = None
+dash_loop_sound_path = asset_dir / "ダッシュ中.mp3"
+if dash_loop_sound_path.exists():
+    try:
+        dash_loop_sound = pygame.mixer.Sound(str(dash_loop_sound_path))
+        dash_loop_sound.set_volume(DASH_LOOP_VOLUME)
+    except Exception as exc:
+        print(f"ダッシュ中音の読み込みに失敗しました: {exc}")
+else:
+    print(f"ダッシュ中音が見つかりません: {dash_loop_sound_path}")
+
 
 hidden_boss_bgm_loaded = False
 hidden_boss_bgm_path = asset_dir / "和風.mp3"
 if hidden_boss_bgm_path.exists():
     try:
         pygame.mixer.music.load(str(hidden_boss_bgm_path))
-        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.set_volume(0.4)
         hidden_boss_bgm_loaded = True
     except Exception as exc:
         print(f"上級ボスBGMの読み込みに失敗しました: {exc}")
@@ -912,7 +947,7 @@ mid_boss_bgm_path = asset_dir / "鬼BGM.mp3"
 if mid_boss_bgm_path.exists():
     try:
         pygame.mixer.music.load(str(mid_boss_bgm_path))
-        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.set_volume(0.4)
         mid_boss_bgm_loaded = True
     except Exception as exc:
         print(f"中級ボスBGMの読み込みに失敗しました: {exc}")
@@ -932,7 +967,7 @@ def set_hidden_boss_bgm(is_playing, restart=False):
         # 可能性がある。再生のたびに上級ボスのBGM(和風.mp3)を読み直してから鳴らす。
         try:
             pygame.mixer.music.load(str(hidden_boss_bgm_path))
-            pygame.mixer.music.set_volume(0.5)
+            pygame.mixer.music.set_volume(0.4)
         except Exception as exc:
             print(f"上級ボスBGMの再生準備に失敗しました: {exc}")
             return
@@ -952,7 +987,7 @@ def set_mid_boss_bgm(is_playing, restart=False):
         # 再生のたびに中級ボスのBGM(鬼BGM.mp3)を読み直してから鳴らす。
         try:
             pygame.mixer.music.load(str(mid_boss_bgm_path))
-            pygame.mixer.music.set_volume(0.5)
+            pygame.mixer.music.set_volume(0.4)
         except Exception as exc:
             print(f"中級ボスBGMの再生準備に失敗しました: {exc}")
             return
@@ -1017,6 +1052,8 @@ SKIN = (255, 220, 180)  # 肌色
 SHIRT = (50, 150, 255)  # 服の色
 PANTS = (50, 50, 50)    # ズボンの色
 GROUND_COLOR = (100, 100, 100)
+# 練習場(ステージ1)の床色。神殿.pngの土手・床に合わせた暖かい茶色で、背景と違和感なく馴染む。
+PRACTICE_GROUND_COLOR = (120, 85, 50)
 SWORD_COLOR = (192, 192, 192)
 RED = (255, 0, 0)
 ENEMY_SKIN = (200, 100, 100) # 敵の肌色
@@ -1991,6 +2028,10 @@ class MidBoss(Boss):
         self.entrance_banner_timer = 0
         # 突進アニメ（鬼新突進.gif）の再生位置。DASHに入るたびに0へ戻して1周ぶん再生する
         self.dash_frame = 0
+        # ダッシュ中ループ音が現在再生中かどうかの管理フラグ
+        self._dash_loop_playing = False
+        # ダッシュ中ループ音の次の再生までの残りフレーム
+        self._dash_loop_timer = 0
         # 被弾判定は見た目(不透明ピクセル範囲)に合わせる。基底の60x130は使わない。
         self.rect = pygame.Rect(0, 0, 10, 10)
         self.sync_hitbox()
@@ -2211,7 +2252,7 @@ class MidBoss(Boss):
                 self.entrance_banner_timer = MID_BOSS_ENTRANCE_BANNER_FRAMES
                 # 登場演出の叩きつけ着地時にも音を鳴らす（1回だけ）。
                 if slam_sound is not None:
-                    slam_sound.play(0)  # チャンネル0で強制再生（BGM/他効果音に負けない）
+                    pygame.mixer.Channel(0).play(slam_sound)  # チャンネル0で強制再生（BGM/他効果音に負けない）
             self.sync_hitbox()
             return
 
@@ -2297,7 +2338,7 @@ class MidBoss(Boss):
                 # 攻撃発生(叩きつけ着地)の瞬間に叩きつけ音を1回だけ鳴らす。
                 # SLAM_RECOVERへは1回の攻撃につき1回だけ遷移するため連鳴しない。
                 if slam_sound is not None:
-                    slam_sound.play(0)  # チャンネル0で強制再生（BGM/他効果音に負けない）
+                    pygame.mixer.Channel(0).play(slam_sound)  # チャンネル0で強制再生（BGM/他効果音に負けない）
                 if player_obj is not None:
                     # 当たり判定は鬼叩きつけ.pngの見た目の範囲に合わせる
                     hit_area = self.slam_hit_rect()
@@ -2312,6 +2353,21 @@ class MidBoss(Boss):
 
         elif self.phase == "DASH":
             self.phase_timer += 1
+            # ダッシュ開始1フレーム目: 踏み込み音を1回鳴らし、ダッシュ中ループ音を再生開始
+            if self.phase_timer == 1:
+                if dash_start_sound is not None:
+                    pygame.mixer.Channel(1).play(dash_start_sound)  # チャンネル1で1回だけ（一番最初の踏み込み）
+                if dash_loop_sound is not None and not self._dash_loop_playing:
+                    pygame.mixer.Channel(2).play(dash_loop_sound)  # チャンネル2で1回再生（以降タイマーで繰り返し）
+                    self._dash_loop_playing = True
+                    self._dash_loop_timer = 0
+            # ダッシュ中ループ音を短い間隔で繰り返し再生（タイトな走り音）
+            if self._dash_loop_playing:
+                self._dash_loop_timer += 1
+                if self._dash_loop_timer >= DASH_LOOP_INTERVAL_FRAMES:
+                    self._dash_loop_timer = 0
+                    if dash_loop_sound is not None:
+                        pygame.mixer.Channel(2).play(dash_loop_sound)
             # 突進アニメの再生位置を進める（立ち位置に合わせて足元が動かないよう1周ぶんループ）
             self.dash_frame += 1
             # 突進は水平方向のみ。浮かないように突進中も重力と足場判定をかける
@@ -2432,6 +2488,11 @@ class MidBoss(Boss):
                 self.y = self.ceiling_limit
                 if self.vel_y < 0:
                     self.vel_y = 0
+
+        # ダッシュ終了時: ダッシュ中ループ音を停止
+        if self.phase != "DASH" and self._dash_loop_playing:
+            pygame.mixer.Channel(2).stop()
+            self._dash_loop_playing = False
 
         self.sync_hitbox()
 
@@ -4163,10 +4224,16 @@ def main():
         if current_stage == 6:
             screen.blit(hidden_boss_background, (0, 0))
         elif current_stage == 5:
-            screen.blit(mid_boss_background, (0, 0))
+            # 鬼のステージ: 背景を少し下げてプレイヤーの足場位置と合わせる
+            # 背景を下げた分、上部を黒で塗りつぶして違和感をなくす
+            screen.fill((0, 0, 0), (0, 0, SCREEN_WIDTH, BOSS_BACKGROUND_OFFSET_Y))
+            screen.blit(mid_boss_background, (0, BOSS_BACKGROUND_OFFSET_Y))
         elif current_stage == 4:
             # 初級ボス(唐笠お化け)戦は唐笠背景.png
-            screen.blit(normal_boss_background, (0, 0))
+            # 背景を少し下げてプレイヤーの足場位置と合わせる
+            # 背景を下げた分、上部を黒で塗りつぶして違和感をなくす
+            screen.fill((0, 0, 0), (0, 0, SCREEN_WIDTH, BOSS_BACKGROUND_OFFSET_Y))
+            screen.blit(normal_boss_background, (0, BOSS_BACKGROUND_OFFSET_Y))
         elif current_stage == 1:
             # 練習場は神殿.png(無い場合は白背景)
             if practice_background is not None:
@@ -4196,13 +4263,8 @@ def main():
                 )
                 screen.blit(tile, plat)
         else:
-            # 地面の描画(練習場は神殿の絵を活かすため帯を描かない)
-            if current_stage != 1 or practice_background is None:
-                pygame.draw.rect(screen, GROUND_COLOR, (0, 535, SCREEN_WIDTH, 65))
-
-            # 足場の描画
-            for plat in platforms:
-                pygame.draw.rect(screen, GROUND_COLOR, plat, border_radius=3)
+            # 玉藻前(ステージ6)以外は床を描画しない（背景のみ）
+            pass
 
         # ステージ1ならボス入口を描画(練習場: 赤鬼=左、玉藻前=中央、唐笠お化け=右)
         if current_stage == 1:
@@ -4284,13 +4346,8 @@ def main():
                 pygame.draw.rect(screen, BLACK, (bx - 6, by - 6, bar_w + 12, bar_h + 12)) # 外枠
                 pygame.draw.rect(screen, (60, 60, 60), (bx, by, bar_w, bar_h))      # 背景
                 pygame.draw.rect(screen, RED, (bx, by, bar_w * (enemy.health / enemy.max_health), bar_h)) # 残量
-                screen.blit(font.render(stage_name, True, WHITE), (bx, by - 20))
 
         pygame.display.set_caption(f"{stage_name} | Stage: {current_stage} | SCORE: {player.score}")
-
-        # 画面上にステージ名を表示
-        stage_label = font.render(stage_name, True, BLACK)
-        screen.blit(stage_label, (SCREEN_WIDTH // 2 - stage_label.get_width() // 2, 10))
 
         pygame.display.flip()
         clock.tick(60)
