@@ -8,6 +8,9 @@ from PIL import Image, ImageSequence
 pygame.init()
 pygame.mixer.init()
 pygame.mixer.set_num_channels(8)
+# チャンネル0を叩きつけ音などの重要効果音専用に予約。
+# BGM(mixer.music)は別チャンネルなので影響なく、他の効果音と被って叩きつけ音が消えるのを防ぐ。
+pygame.mixer.set_reserved(1)
 
 # 画面設定
 SCREEN_WIDTH = 800
@@ -871,13 +874,27 @@ if shot_sound_path.exists():
 else:
     print(f"ショット音が見つかりません: {shot_sound_path}")
 
+# 中級ボス(赤鬼)のジャンプ叩きつけ攻撃用の効果音。
+# 攻撃発生(着地)の瞬間に1回だけ鳴らす。登場演出の着地でも鳴らす。
+SLAM_SOUND_VOLUME = 1.0
+slam_sound = None
+slam_sound_path = asset_dir / "叩きつけ音.mp3"
+if slam_sound_path.exists():
+    try:
+        slam_sound = pygame.mixer.Sound(str(slam_sound_path))
+        slam_sound.set_volume(SLAM_SOUND_VOLUME)
+    except Exception as exc:
+        print(f"叩きつけ音の読み込みに失敗しました: {exc}")
+else:
+    print(f"叩きつけ音が見つかりません: {slam_sound_path}")
+
 
 hidden_boss_bgm_loaded = False
 hidden_boss_bgm_path = asset_dir / "和風.mp3"
 if hidden_boss_bgm_path.exists():
     try:
         pygame.mixer.music.load(str(hidden_boss_bgm_path))
-        pygame.mixer.music.set_volume(0.8)
+        pygame.mixer.music.set_volume(0.5)
         hidden_boss_bgm_loaded = True
     except Exception as exc:
         print(f"上級ボスBGMの読み込みに失敗しました: {exc}")
@@ -895,7 +912,7 @@ mid_boss_bgm_path = asset_dir / "鬼BGM.mp3"
 if mid_boss_bgm_path.exists():
     try:
         pygame.mixer.music.load(str(mid_boss_bgm_path))
-        pygame.mixer.music.set_volume(0.8)
+        pygame.mixer.music.set_volume(0.5)
         mid_boss_bgm_loaded = True
     except Exception as exc:
         print(f"中級ボスBGMの読み込みに失敗しました: {exc}")
@@ -915,7 +932,7 @@ def set_hidden_boss_bgm(is_playing, restart=False):
         # 可能性がある。再生のたびに上級ボスのBGM(和風.mp3)を読み直してから鳴らす。
         try:
             pygame.mixer.music.load(str(hidden_boss_bgm_path))
-            pygame.mixer.music.set_volume(0.8)
+            pygame.mixer.music.set_volume(0.5)
         except Exception as exc:
             print(f"上級ボスBGMの再生準備に失敗しました: {exc}")
             return
@@ -935,7 +952,7 @@ def set_mid_boss_bgm(is_playing, restart=False):
         # 再生のたびに中級ボスのBGM(鬼BGM.mp3)を読み直してから鳴らす。
         try:
             pygame.mixer.music.load(str(mid_boss_bgm_path))
-            pygame.mixer.music.set_volume(0.8)
+            pygame.mixer.music.set_volume(0.5)
         except Exception as exc:
             print(f"中級ボスBGMの再生準備に失敗しました: {exc}")
             return
@@ -2192,6 +2209,9 @@ class MidBoss(Boss):
                 self.phase_timer = 0
                 self.dash_count = 0
                 self.entrance_banner_timer = MID_BOSS_ENTRANCE_BANNER_FRAMES
+                # 登場演出の叩きつけ着地時にも音を鳴らす（1回だけ）。
+                if slam_sound is not None:
+                    slam_sound.play(0)  # チャンネル0で強制再生（BGM/他効果音に負けない）
             self.sync_hitbox()
             return
 
@@ -2274,6 +2294,10 @@ class MidBoss(Boss):
                 self.phase = "SLAM_RECOVER"
                 self.phase_timer = 0
                 self.dash_count = 0
+                # 攻撃発生(叩きつけ着地)の瞬間に叩きつけ音を1回だけ鳴らす。
+                # SLAM_RECOVERへは1回の攻撃につき1回だけ遷移するため連鳴しない。
+                if slam_sound is not None:
+                    slam_sound.play(0)  # チャンネル0で強制再生（BGM/他効果音に負けない）
                 if player_obj is not None:
                     # 当たり判定は鬼叩きつけ.pngの見た目の範囲に合わせる
                     hit_area = self.slam_hit_rect()
