@@ -823,15 +823,15 @@ beam_sound_path = asset_dir / "ビーム.mp3"
 if beam_sound_path.exists():
     try:
         beam_sound = pygame.mixer.Sound(str(beam_sound_path))
-        beam_sound.set_volume(0.75)
+        beam_sound.set_volume(1.0)
     except Exception as exc:
         print(f"ビーム音の読み込みに失敗しました: {exc}")
 
 # 「画面の三分の一」を占める大きなビーム(TRIPLE_COLUMN)用の効果音。
 # 予測線が出ている間(1.5秒)はチャージ音を鳴らし、当たり判定が出るときに砲撃音を鳴らす。
 # 音量は環境に合わせてここで調整する
-BEAM_CHARGE_VOLUME = 0.8
-BEAM_CANNON_VOLUME = 0.9
+BEAM_CHARGE_VOLUME = 1.0
+BEAM_CANNON_VOLUME = 1.0
 # 予測線の表示時間(phase_timer 0〜89 = 90フレーム)。チャージ音の長さもこれに合わせて用意する
 BEAM_WARNING_SECONDS = 1.5
 
@@ -865,7 +865,7 @@ else:
     print(f"ビーム砲音が見つかりません: {beam_cannon_path}")
 
 # 上級ボスが弾を発射するときの効果音。1発の弾につき1回鳴らす
-SHOT_SOUND_VOLUME = 0.6
+SHOT_SOUND_VOLUME = 1.0
 # 斉射の音がすべて同時に鳴ると1音に潰れて聞こえないため、
 # 発射音を何フレームごとに1回鳴らすか（2フレーム ≒ 0.03秒）
 SHOT_SOUND_STAGGER = 2
@@ -896,7 +896,7 @@ else:
     print(f"叩きつけ音が見つかりません: {slam_sound_path}")
 
 # 中級ボス(赤鬼)のダッシュ攻撃用の効果音。
-# 一番最初の踏み込みに「踏み込み.mp3」、ダッシュ中は「ダッシュ中.mp3」をループ再生。
+# 一番最初の踏み込みに「踏み込み.mp3」、ダッシュ中も「踏み込み.mp3」をループ再生。
 DASH_START_VOLUME = 1.0
 dash_start_sound = None
 dash_start_sound_path = asset_dir / "踏み込み.mp3"
@@ -911,17 +911,18 @@ else:
 
 DASH_LOOP_VOLUME = 1.0
 # ダッシュ中ループ音の再生間隔（フレーム）。短くするほどタイトに繰り返し鳴る。
-DASH_LOOP_INTERVAL_FRAMES = 4
+# 踏み込み音を密に繰り返して力強い走り音にする。
+DASH_LOOP_INTERVAL_FRAMES = 1
 dash_loop_sound = None
-dash_loop_sound_path = asset_dir / "ダッシュ中.mp3"
+dash_loop_sound_path = asset_dir / "踏み込み.mp3"
 if dash_loop_sound_path.exists():
     try:
         dash_loop_sound = pygame.mixer.Sound(str(dash_loop_sound_path))
         dash_loop_sound.set_volume(DASH_LOOP_VOLUME)
     except Exception as exc:
-        print(f"ダッシュ中音の読み込みに失敗しました: {exc}")
+        print(f"踏み込み音の読み込みに失敗しました: {exc}")
 else:
-    print(f"ダッシュ中音が見つかりません: {dash_loop_sound_path}")
+    print(f"踏み込み音が見つかりません: {dash_loop_sound_path}")
 
 
 hidden_boss_bgm_loaded = False
@@ -929,7 +930,7 @@ hidden_boss_bgm_path = asset_dir / "和風.mp3"
 if hidden_boss_bgm_path.exists():
     try:
         pygame.mixer.music.load(str(hidden_boss_bgm_path))
-        pygame.mixer.music.set_volume(0.4)
+        pygame.mixer.music.set_volume(0.3)
         hidden_boss_bgm_loaded = True
     except Exception as exc:
         print(f"上級ボスBGMの読み込みに失敗しました: {exc}")
@@ -947,7 +948,7 @@ mid_boss_bgm_path = asset_dir / "鬼BGM.mp3"
 if mid_boss_bgm_path.exists():
     try:
         pygame.mixer.music.load(str(mid_boss_bgm_path))
-        pygame.mixer.music.set_volume(0.4)
+        pygame.mixer.music.set_volume(0.3)
         mid_boss_bgm_loaded = True
     except Exception as exc:
         print(f"中級ボスBGMの読み込みに失敗しました: {exc}")
@@ -955,6 +956,24 @@ else:
     print(f"中級ボスBGMが見つかりません: {mid_boss_bgm_path}")
 
 mid_boss_bgm_started = False
+
+
+# 初級ボス(ステージ4)のBGM。唐笠お化けの世界観に合わせて唐笠.mp3を使う。
+# mixer.music は再生する音源を1つだけ保持する単一チャンネルなので、
+# 他のステージのBGM(和風.mp3/鬼BGM.mp3)を読み込んでいても、再生のたびに自分のファイルを読み直す。
+normal_boss_bgm_loaded = False
+normal_boss_bgm_path = asset_dir / "唐笠.mp3"
+if normal_boss_bgm_path.exists():
+    try:
+        pygame.mixer.music.load(str(normal_boss_bgm_path))
+        pygame.mixer.music.set_volume(0.3)
+        normal_boss_bgm_loaded = True
+    except Exception as exc:
+        print(f"初級ボスBGMの読み込みに失敗しました: {exc}")
+else:
+    print(f"初級ボスBGMが見つかりません: {normal_boss_bgm_path}")
+
+normal_boss_bgm_started = False
 
 
 def set_hidden_boss_bgm(is_playing, restart=False):
@@ -967,7 +986,7 @@ def set_hidden_boss_bgm(is_playing, restart=False):
         # 可能性がある。再生のたびに上級ボスのBGM(和風.mp3)を読み直してから鳴らす。
         try:
             pygame.mixer.music.load(str(hidden_boss_bgm_path))
-            pygame.mixer.music.set_volume(0.4)
+            pygame.mixer.music.set_volume(0.3)
         except Exception as exc:
             print(f"上級ボスBGMの再生準備に失敗しました: {exc}")
             return
@@ -987,7 +1006,7 @@ def set_mid_boss_bgm(is_playing, restart=False):
         # 再生のたびに中級ボスのBGM(鬼BGM.mp3)を読み直してから鳴らす。
         try:
             pygame.mixer.music.load(str(mid_boss_bgm_path))
-            pygame.mixer.music.set_volume(0.4)
+            pygame.mixer.music.set_volume(0.3)
         except Exception as exc:
             print(f"中級ボスBGMの再生準備に失敗しました: {exc}")
             return
@@ -996,6 +1015,26 @@ def set_mid_boss_bgm(is_playing, restart=False):
     elif not is_playing and mid_boss_bgm_started:
         pygame.mixer.music.stop()
         mid_boss_bgm_started = False
+
+
+def set_normal_boss_bgm(is_playing, restart=False):
+    global normal_boss_bgm_started
+    if not normal_boss_bgm_loaded:
+        return
+
+    if is_playing and (not normal_boss_bgm_started or restart):
+        # 再生のたびに初級ボスのBGM(唐笠.mp3)を読み直してから鳴らす。
+        try:
+            pygame.mixer.music.load(str(normal_boss_bgm_path))
+            pygame.mixer.music.set_volume(0.3)
+        except Exception as exc:
+            print(f"初級ボスBGMの再生準備に失敗しました: {exc}")
+            return
+        pygame.mixer.music.play(-1)
+        normal_boss_bgm_started = True
+    elif not is_playing and normal_boss_bgm_started:
+        pygame.mixer.music.stop()
+        normal_boss_bgm_started = False
 
 
 def play_beam_sound():
@@ -2361,12 +2400,13 @@ class MidBoss(Boss):
                     pygame.mixer.Channel(2).play(dash_loop_sound)  # チャンネル2で1回再生（以降タイマーで繰り返し）
                     self._dash_loop_playing = True
                     self._dash_loop_timer = 0
-            # ダッシュ中ループ音を短い間隔で繰り返し再生（タイトな走り音）
+            # 踏み込み音を短い間隔で繰り返し再生（高頻度の走り音）
+            # 前の足音が終わったら次の足音を鳴らし、音が途切れないようにする
             if self._dash_loop_playing:
                 self._dash_loop_timer += 1
                 if self._dash_loop_timer >= DASH_LOOP_INTERVAL_FRAMES:
                     self._dash_loop_timer = 0
-                    if dash_loop_sound is not None:
+                    if dash_loop_sound is not None and not pygame.mixer.Channel(2).get_busy():
                         pygame.mixer.Channel(2).play(dash_loop_sound)
             # 突進アニメの再生位置を進める（立ち位置に合わせて足元が動かないよう1周ぶんループ）
             self.dash_frame += 1
@@ -4070,6 +4110,18 @@ def mid_boss_battle_active(enemies):
     )
 
 
+def normal_boss_battle_active(enemies):
+    """初級ボス(ステージ4)との戦闘中かどうか。
+
+    唐笠お化けは入場演出なしですぐに戦闘が始まるため、
+    生存しているあいだ唐笠.mp3を流す。
+    """
+    return any(
+        isinstance(enemy, Boss) and enemy.health > 0
+        for enemy in enemies
+    )
+
+
 def main():
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("msgothic", 24)
@@ -4107,6 +4159,9 @@ def main():
         )
         set_mid_boss_bgm(
             current_stage == 5 and mid_boss_battle_active(enemies)
+        )
+        set_normal_boss_bgm(
+            current_stage == 4 and normal_boss_battle_active(enemies)
         )
 
         player.update(
