@@ -6,6 +6,7 @@ from PIL import Image, ImageSequence
 
 # Pygameの初期化
 pygame.init()
+pygame.mouse.set_visible(False)  # ゲーム画面内にマウスを表示しない
 pygame.mixer.init()
 pygame.mixer.set_num_channels(8)
 # チャンネル0: 叩きつけ音専用
@@ -274,6 +275,9 @@ _evade_asset = asset_dir / "新ダッシュ.gif"
 if not _evade_asset.exists():
     _evade_asset = asset_dir / "回避.gif"
 evade_frames = load_animated_gif_frames(_evade_asset, PLAYER_GIF_SIZE)
+
+# ジャンプアニメーションGIF (ジャンプ.gif)
+jump_frames = load_animated_gif_frames(asset_dir / "ジャンプ.gif", PLAYER_GIF_SIZE)
 
 hidden_boss_asset_candidates = [
     asset_dir / "タマミツネ.png",
@@ -610,6 +614,99 @@ mid_boss_background = load_sprite(
     (SCREEN_WIDTH, SCREEN_HEIGHT),
     fallback_color=(0, 0, 0)
 )
+# ゲームクリア画面に表示する画像（クリア.png）
+# 元サイズのまま読み込み（リサイズしない）。game_clear_screen で smoothscale で高品質に拡大する。
+_clear_image_path = asset_dir / "クリア.png"
+if _clear_image_path.exists():
+    try:
+        clear_image = pygame.image.load(str(_clear_image_path)).convert_alpha()
+    except (pygame.error, OSError):
+        print(f"画像読み込みに失敗しました: {_clear_image_path}")
+        clear_image = load_sprite("", (SCREEN_WIDTH, SCREEN_HEIGHT), fallback_color=(255, 215, 0))
+else:
+    print(f"画像が見つかりません: {_clear_image_path}。プレースホルダーを使用します。")
+    clear_image = load_sprite("", (SCREEN_WIDTH, SCREEN_HEIGHT), fallback_color=(255, 215, 0))
+
+# タイトル画面に表示する画像（タイトル.png）
+# 元サイズのまま読み込み（リサイズしない）。title_screen で smoothscale で高品質に拡大する。
+_title_image_path = asset_dir / "タイトル.png"
+if _title_image_path.exists():
+    try:
+        title_image = pygame.image.load(str(_title_image_path)).convert_alpha()
+    except (pygame.error, OSError):
+        print(f"画像読み込みに失敗しました: {_title_image_path}")
+        title_image = load_sprite("", (SCREEN_WIDTH, SCREEN_HEIGHT), fallback_color=(18, 18, 36))
+else:
+    print(f"画像が見つかりません: {_title_image_path}。テキストタイトルにフォールバックします。")
+    title_image = None
+
+# 封印状態のボス入り口に表示する画像（元サイズのまま読み込み、ポータルサイズにスケールして描画）
+# 鬼封印.png：赤鬼（ステージ5）への入り口が封印されているとき
+_oni_seal_path = asset_dir / "鬼封印.png"
+if _oni_seal_path.exists():
+    try:
+        oni_seal_image = pygame.image.load(str(_oni_seal_path)).convert_alpha()
+    except (pygame.error, OSError):
+        print(f"画像読み込みに失敗しました: {_oni_seal_path}")
+        oni_seal_image = None
+else:
+    oni_seal_image = None
+
+# たま封印.png：玉藻前（ステージ6）への入り口が封印されているとき
+_tama_seal_path = asset_dir / "たま封印.png"
+if _tama_seal_path.exists():
+    try:
+        tama_seal_image = pygame.image.load(str(_tama_seal_path)).convert_alpha()
+    except (pygame.error, OSError):
+        print(f"画像読み込みに失敗しました: {_tama_seal_path}")
+        tama_seal_image = None
+else:
+    tama_seal_image = None
+
+# 扉画像（入室可能時、障子のようにプレイヤーサイズで表示）
+# 唐笠扉.png：唐笠お化け（ステージ4）への入り口
+_tora_door_path = asset_dir / "唐笠扉.png"
+if _tora_door_path.exists():
+    try:
+        tora_door_image = pygame.image.load(str(_tora_door_path)).convert_alpha()
+    except (pygame.error, OSError):
+        print(f"画像読み込みに失敗しました: {_tora_door_path}")
+        tora_door_image = None
+else:
+    tora_door_image = None
+
+# 鬼扉.png：赤鬼（ステージ5）への入り口
+_oni_door_path = asset_dir / "鬼扉.png"
+if _oni_door_path.exists():
+    try:
+        oni_door_image = pygame.image.load(str(_oni_door_path)).convert_alpha()
+    except (pygame.error, OSError):
+        print(f"画像読み込みに失敗しました: {_oni_door_path}")
+        oni_door_image = None
+else:
+    oni_door_image = None
+
+# たま扉.png：玉藻前（ステージ6）への入り口
+_tama_door_path = asset_dir / "たま扉.png"
+if _tama_door_path.exists():
+    try:
+        tama_door_image = pygame.image.load(str(_tama_door_path)).convert_alpha()
+    except (pygame.error, OSError):
+        print(f"画像読み込みに失敗しました: {_tama_door_path}")
+        tama_door_image = None
+else:
+    tama_door_image = None
+
+# プレイヤーの後ろ向き画像（部屋への入室時に表示）
+_back_image_path = asset_dir / "後ろ.png"
+if _back_image_path.exists():
+    try:
+        player_back_image = pygame.image.load(str(_back_image_path)).convert_alpha()
+    except (pygame.error, OSError):
+        print(f"画像読み込みに失敗しました: {_back_image_path}")
+        player_back_image = None
+else:
+    player_back_image = None
 # 初級ボス(ステージ4)の背景。唐笠お化けに合わせて唐笠背景.pngを使う。
 normal_boss_background = load_sprite(
     asset_dir / "唐笠背景.png",
@@ -976,6 +1073,23 @@ else:
 normal_boss_bgm_started = False
 
 
+# タイトル画面のBGM。タイトル画面.mp3を使う。
+# mixer.music は単一チャンネルなので、再生のたびに自分のファイルを読み直す。
+title_bgm_loaded = False
+title_bgm_path = asset_dir / "タイトル画面.mp3"
+if title_bgm_path.exists():
+    try:
+        pygame.mixer.music.load(str(title_bgm_path))
+        pygame.mixer.music.set_volume(0.3)
+        title_bgm_loaded = True
+    except Exception as exc:
+        print(f"タイトルBGMの読み込みに失敗しました: {exc}")
+else:
+    print(f"タイトルBGMが見つかりません: {title_bgm_path}")
+
+title_bgm_started = False
+
+
 def set_hidden_boss_bgm(is_playing, restart=False):
     global hidden_boss_bgm_started
     if not hidden_boss_bgm_loaded:
@@ -1035,6 +1149,27 @@ def set_normal_boss_bgm(is_playing, restart=False):
     elif not is_playing and normal_boss_bgm_started:
         pygame.mixer.music.stop()
         normal_boss_bgm_started = False
+
+
+def set_title_bgm(is_playing, restart=False):
+    """タイトル画面BGMを再生/停止する"""
+    global title_bgm_started
+    if not title_bgm_loaded:
+        return
+
+    if is_playing and (not title_bgm_started or restart):
+        # 再生のたびにタイトルBGM(タイトル画面.mp3)を読み直してから鳴らす。
+        try:
+            pygame.mixer.music.load(str(title_bgm_path))
+            pygame.mixer.music.set_volume(0.3)
+        except Exception as exc:
+            print(f"タイトルBGMの再生準備に失敗しました: {exc}")
+            return
+        pygame.mixer.music.play(-1)
+        title_bgm_started = True
+    elif not is_playing and title_bgm_started:
+        pygame.mixer.music.stop()
+        title_bgm_started = False
 
 
 def play_beam_sound():
@@ -1135,11 +1270,15 @@ class Player:
         self.evade_frame_index = 0
         self.evade_anim_timer = 0
         self.score = 0
+        self.left_wall_timer = 0  # 左の壁に張り付いて左移動し続けたフレーム数（隠しコマンド用）
+        self.right_wall_timer = 0  # 右の壁に張り付いて右移動し続けたフレーム数（隠しコマンド用）
         self.rect = pygame.Rect(self.x - 10, self.y - 47, 20, 82)
         self.particles = []
         self.walk_frames = load_animated_gif_frames(asset_dir / "新歩き.gif", PLAYER_GIF_SIZE)
         self.walk_frame_index = 0
         self.walk_anim_timer = 0
+        self.jump_frame_index = 0
+        self.jump_anim_timer = 0
         self.attack_frame_index = 0
         self.attack_anim_timer = 0
 
@@ -1180,10 +1319,24 @@ class Player:
                 self.x -= self.speed
                 moving = True
                 self.facing_right = False
-            if right_pressed:
+                # 隠しコマンド: 左の壁に張り付いて左移動し続けるとカウントアップ
+                if self.x <= 0:
+                    self.left_wall_timer += 1
+                else:
+                    self.left_wall_timer = 0
+            elif right_pressed:
                 self.x += self.speed
                 moving = True
                 self.facing_right = True
+                self.left_wall_timer = 0
+                # 隠しコマンド: ステージ1で右の壁に張り付いて右移動し続けるとカウントアップ
+                if self.x >= SCREEN_WIDTH - 20:
+                    self.right_wall_timer += 1
+                else:
+                    self.right_wall_timer = 0
+            else:
+                self.left_wall_timer = 0
+                self.right_wall_timer = 0
 
         # 回避アニメーション (回避の持続時間16フレームに合わせて全コマを流す)
         if self.evade_timer > 0 and evade_frames:
@@ -1240,6 +1393,17 @@ class Player:
             self.walk_cycle = 0  # 止まったら直立
             self.walk_anim_timer = 0
             self.walk_frame_index = 0
+
+        # ジャンプアニメーション (ジャンプ中はコマを進行、着地したらリセット、最後のフレームで停止・ループしない)
+        if self.is_jumping and jump_frames:
+            self.jump_anim_timer += 1
+            if self.jump_anim_timer >= 4:  # 4フレームごとにコマを進める
+                self.jump_anim_timer = 0
+                # 最後のフレームで停止（ループさせない）
+                self.jump_frame_index = min(self.jump_frame_index + 1, len(jump_frames) - 1)
+        else:
+            self.jump_frame_index = 0
+            self.jump_anim_timer = 0
 
         # 重力の適用
         self.vel_y += self.gravity
@@ -1437,6 +1601,11 @@ class Player:
         # 回避中は回避アニメーションを表示 (慣性のない回避モーションに合わせる)
         if self.evade_timer > 0 and evade_frames:
             draw_ground_aligned(evade_frames[self.evade_frame_index])
+            return
+
+        # ジャンプ中はジャンプアニメーションを表示
+        if self.is_jumping and jump_frames:
+            draw_ground_aligned(jump_frames[self.jump_frame_index])
             return
 
         if moving and self.walk_frames:
@@ -3939,16 +4108,20 @@ class BossDefeatEffect:
 
 
 def game_clear_screen(screen, font):
-    """ゲームクリア画面を表示する"""
+    """ゲームクリア画面を表示する（フルスクリーン）"""
     while True:
         screen.fill(WHITE)
-        large_font = pygame.font.SysFont("msgothic", 80, bold=True)
-        clear_label = large_font.render("GAME CLEAR!", True, GOLD)
-        screen.blit(clear_label, (SCREEN_WIDTH // 2 - clear_label.get_width() // 2, 200))
-        
-        msg = font.render("おめでとう！ ボスを撃破し、全ての試練を突破しました！", True, BLACK)
-        screen.blit(msg, (SCREEN_WIDTH // 2 - msg.get_width() // 2, 320))
-        
+        # クリア画像を画面いっぱいに高品質拡大して表示（smoothscale で画質劣化を抑制）
+        if clear_image is not None:
+            clear_scaled = pygame.transform.smoothscale(clear_image, screen.get_size())
+            screen.blit(clear_scaled, (0, 0))
+        else:
+            large_font = pygame.font.SysFont("msgothic", 80, bold=True)
+            clear_label = large_font.render("GAME CLEAR!", True, GOLD)
+            screen.blit(clear_label, (SCREEN_WIDTH // 2 - clear_label.get_width() // 2, 200))
+            msg = font.render("おめでとう！ ボスを撃破し、全ての試練を突破しました！", True, BLACK)
+            screen.blit(msg, (SCREEN_WIDTH // 2 - msg.get_width() // 2, 320))
+
         hint = font.render("Escキーで終了します", True, (100, 100, 100))
         screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, 450))
 
@@ -3972,19 +4145,28 @@ def title_screen(screen, font):
     small_font = pygame.font.SysFont("msgothic", 20)
     clock = pygame.time.Clock()
 
+    # タイトルBGMを再生
+    set_title_bgm(True)
+
     while True:
         screen.fill((18, 18, 36))
 
-        for y in range(0, SCREEN_HEIGHT, 24):
-            pygame.draw.rect(screen, (30, 30, 60), (0, y, SCREEN_WIDTH, 12))
+        # タイトル画像を画面いっぱいに表示（画像が無い場合はテキストでフォールバック）
+        if title_image is not None:
+            title_scaled = pygame.transform.smoothscale(title_image, screen.get_size())
+            screen.blit(title_scaled, (0, 0))
+        else:
+            for y in range(0, SCREEN_HEIGHT, 24):
+                pygame.draw.rect(screen, (30, 30, 60), (0, y, SCREEN_WIDTH, 12))
 
-        title = title_font.render("BOSS RUSH", True, GOLD)
-        subtitle = sub_font.render("最強のボスを倒せ！", True, WHITE)
+            title = title_font.render("BOSS RUSH", True, GOLD)
+            subtitle = sub_font.render("最強のボスを倒せ！", True, WHITE)
+            screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 140))
+            screen.blit(subtitle, (SCREEN_WIDTH // 2 - subtitle.get_width() // 2, 240))
+
         start_msg = small_font.render("ENTERキーでスタート", True, (220, 220, 220))
         controls = small_font.render("移動: ← → / Shift・右クリック: 回避 / Z: 射撃 / X: 近接攻撃", True, (200, 200, 255))
 
-        screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 140))
-        screen.blit(subtitle, (SCREEN_WIDTH // 2 - subtitle.get_width() // 2, 240))
         screen.blit(start_msg, (SCREEN_WIDTH // 2 - start_msg.get_width() // 2, 360))
         screen.blit(controls, (SCREEN_WIDTH // 2 - controls.get_width() // 2, 420))
 
@@ -3997,6 +4179,7 @@ def title_screen(screen, font):
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_KP_ENTER):
+                    set_title_bgm(False)
                     return
 
 
@@ -4129,6 +4312,16 @@ def main():
 
     player = Player()
     current_stage = 1
+    # ボスクリアフラグ（ボス部屋への入室順序制御用）
+    defeated_normal_boss = False  # 唐笠お化け（ステージ4）を倒したか
+    defeated_mid_boss = False     # 赤鬼（ステージ5）を倒したか
+    # 部屋への入室アニメーション用
+    door_anim_frames = []        # 入室アニメーションのフレームリスト
+    door_anim_frame_index = 0    # 現在のフレームインデックス
+    door_anim_timer = 0          # アニメーションタイマー
+    door_anim_target_stage = 0   # 遷移先ステージ
+    door_anim_portal = None      # アニメーション再生元のポータルRect
+    door_anim_active = False     # アニメーション再生中か
     stage_names = {
         1: "練習場",
         2: "高台の戦い",
@@ -4164,13 +4357,32 @@ def main():
             current_stage == 4 and normal_boss_battle_active(enemies)
         )
 
-        player.update(
-            platforms,
-            enemies,
-            projectiles,
-            powerups,
-            effects
-        )
+        # 部屋への入室アニメーションを更新
+        if door_anim_active and door_anim_frames:
+            door_anim_timer += 1
+            if door_anim_timer >= 8:  # 8フレームごとにコマを進める（再生時間を長くする）
+                door_anim_timer = 0
+                door_anim_frame_index += 1
+                if door_anim_frame_index >= len(door_anim_frames):
+                    # アニメーション終了：ステージ遷移
+                    current_stage = door_anim_target_stage
+                    enemies, platforms = setup_stage(current_stage)
+                    projectiles.clear()
+                    player.x, player.y = SCREEN_WIDTH // 2, 450
+                    player.vel_y = 0
+                    player.is_jumping = False
+                    door_anim_active = False
+                    door_anim_frames = []
+                    continue
+            # アニメーション中はプレイヤーを動かさない
+        else:
+            player.update(
+                platforms,
+                enemies,
+                projectiles,
+                powerups,
+                effects
+            )
         effects.update()
 
         for effect in defeat_effects:
@@ -4225,6 +4437,11 @@ def main():
             if enemy.health <= 0 and isinstance(enemy, Boss):
                 defeat_effects.append(BossDefeatEffect(enemy))
                 player.health = player.max_health  # ボスを倒したら全回復
+                # ボスクリアフラグをセット（入室順序制御用）
+                if current_stage == 4:
+                    defeated_normal_boss = True  # 唐笠お化けクリア
+                elif current_stage == 5:
+                    defeated_mid_boss = True     # 赤鬼クリア
 
         # 体力がなくなった敵を削除
         enemies = [e for e in enemies if e.health > 0]
@@ -4235,38 +4452,63 @@ def main():
             hidden_boss_portal = PRACTICE_PORTALS[6]
             normal_boss_portal = PRACTICE_PORTALS[4]
             keys = pygame.key.get_pressed()
-            if player.rect.colliderect(normal_boss_portal) and (keys[pygame.K_UP] or keys[pygame.K_w]):
-                current_stage = 4
-                enemies, platforms = setup_stage(current_stage)
-                projectiles.clear()
-                player.x, player.y = SCREEN_WIDTH // 2, 450
-                player.vel_y = 0
-                player.is_jumping = False
-                continue
-            if player.rect.colliderect(middle_boss_portal) and (keys[pygame.K_UP] or keys[pygame.K_w]):
-                current_stage = 5
-                enemies, platforms = setup_stage(current_stage)
-                projectiles.clear()
-                player.x, player.y = SCREEN_WIDTH // 2, 450
-                player.vel_y = 0
-                player.is_jumping = False
-                continue
-            if player.rect.colliderect(hidden_boss_portal) and (keys[pygame.K_UP] or keys[pygame.K_w]):
-                current_stage = 6
-                enemies, platforms = setup_stage(current_stage)
-                projectiles.clear()
-                player.x, player.y = SCREEN_WIDTH // 2, 450
-                player.vel_y = 0
-                player.is_jumping = False
-                continue # ステージ移行したので次のループへ
+            # 部屋への入室アニメーションが再生中でなければ、新しい入室を開始できる
+            if not door_anim_active:
+                if player.rect.colliderect(normal_boss_portal) and (keys[pygame.K_UP] or keys[pygame.K_w]):
+                    # 唐笠お化け（ステージ4）：最初から入室可能
+                    door_anim_frames = load_animated_gif_frames(asset_dir / "唐笠開く.gif", PLAYER_GIF_SIZE)
+                    door_anim_frame_index = 0
+                    door_anim_timer = 0
+                    door_anim_target_stage = 4
+                    door_anim_portal = normal_boss_portal
+                    door_anim_active = True
+                elif player.rect.colliderect(middle_boss_portal) and (keys[pygame.K_UP] or keys[pygame.K_w]):
+                    if defeated_normal_boss:
+                        # 唐笠お化けクリア後のみ赤鬼（ステージ5）に入室可能
+                        door_anim_frames = load_animated_gif_frames(asset_dir / "鬼開く.gif", PLAYER_GIF_SIZE)
+                        door_anim_frame_index = 0
+                        door_anim_timer = 0
+                        door_anim_target_stage = 5
+                        door_anim_portal = middle_boss_portal
+                        door_anim_active = True
+                    else:
+                        # 未クリアの場合は入室拒否（何もしない）
+                        pass
+                elif player.rect.colliderect(hidden_boss_portal) and (keys[pygame.K_UP] or keys[pygame.K_w]):
+                    if defeated_mid_boss:
+                        # 赤鬼クリア後のみ玉藻前（ステージ6）に入室可能
+                        door_anim_frames = load_animated_gif_frames(asset_dir / "たま開く.gif", PLAYER_GIF_SIZE)
+                        door_anim_frame_index = 0
+                        door_anim_timer = 0
+                        door_anim_target_stage = 6
+                        door_anim_portal = hidden_boss_portal
+                        door_anim_active = True
+                    else:
+                        # 未クリアの場合は入室拒否（何もしない）
+                        pass
 
-        # ステージクリア判定（ボスの撃破演出が終わってから次ステージへ進む）
+        # 隠しコマンド: ステージ4(唐笠お化け)で左の壁に5秒間(300フレーム)張り付いて左移動し続けるとゲームクリア
+        if current_stage == 4 and player.left_wall_timer >= 300:
+            game_clear_screen(screen, font)
+
+        # 隠しコマンド: ステージ1(練習場)で右の壁に5秒間(300フレーム)張り付いて右移動し続けるとゲームクリア
+        if current_stage == 1 and player.right_wall_timer >= 300:
+            game_clear_screen(screen, font)
+
+        # ステージクリア判定（ボスの撃破演出が終わってからステージ遷移する）
         if not enemies and not defeat_effects and current_stage != 1:
             if current_stage == 6:
+                # 玉藻前(ステージ6)を倒したらゲームクリア
                 set_hidden_boss_bgm(False)
                 game_clear_screen(screen, font)
-                
-            current_stage += 1
+                # ゲームクリア画面を抜けたらステージ1に戻す
+                current_stage = 1
+            elif current_stage in (4, 5):
+                # ステージ4(唐笠お化け)とステージ5(赤鬼)を倒したらステージ1に戻す
+                current_stage = 1
+            else:
+                current_stage += 1
+
             enemies, platforms = setup_stage(current_stage)
             projectiles.clear()
             defeat_effects.clear()
@@ -4326,18 +4568,96 @@ def main():
             middle_boss_portal = PRACTICE_PORTALS[5]
             hidden_boss_portal = PRACTICE_PORTALS[6]
             normal_boss_portal = PRACTICE_PORTALS[4]
+
+            # 唐笠お化け入り口（常に入室可能）
             pygame.draw.rect(screen, BLACK, normal_boss_portal, border_radius=5)
             pygame.draw.rect(screen, GOLD, normal_boss_portal, 2, border_radius=5)
-            pygame.draw.rect(screen, BLACK, middle_boss_portal, border_radius=5)
-            pygame.draw.rect(screen, (255, 140, 0), middle_boss_portal, 2, border_radius=5)
-            pygame.draw.rect(screen, BLACK, hidden_boss_portal, border_radius=5)
-            pygame.draw.rect(screen, PURPLE, hidden_boss_portal, 2, border_radius=5)
-            # 神殿の背景に合わせて白縁で読みやすくする
-            portal_labels = (
-                ("唐笠お化け", GOLD, normal_boss_portal),
-                ("赤鬼", (255, 140, 0), middle_boss_portal),
-                ("玉藻前", PURPLE, hidden_boss_portal),
-            )
+
+            # 唐笠お化け入り口（常に入室可能）。唐笠扉.pngをプレイヤーサイズで障子のように表示（ポータル下端＝プレイヤー足元に合わせる）
+            if tora_door_image is not None:
+                door_scaled = pygame.transform.smoothscale(tora_door_image, PLAYER_GIF_SIZE)
+                door_x = normal_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                door_y = normal_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                screen.blit(door_scaled, (door_x, door_y))
+            else:
+                pygame.draw.rect(screen, BLACK, normal_boss_portal, border_radius=5)
+                pygame.draw.rect(screen, GOLD, normal_boss_portal, 2, border_radius=5)
+
+            # 赤鬼入り口：一度クリアしたら封印画像（通行止め）にする
+            if defeated_normal_boss:
+                # 唐笠お化けクリア後は赤鬼の扉を封印画像（通行止め）にする
+                if oni_seal_image is not None:
+                    seal_scaled = pygame.transform.smoothscale(oni_seal_image, PLAYER_GIF_SIZE)
+                    seal_x = middle_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                    seal_y = middle_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                    screen.blit(seal_scaled, (seal_x, seal_y))
+                    middle_boss_label = None  # 封印時はラベル表示しない
+                else:
+                    pygame.draw.rect(screen, BLACK, middle_boss_portal, border_radius=5)
+                    pygame.draw.rect(screen, (100, 100, 100), middle_boss_portal, 2, border_radius=5)
+                    middle_boss_label = None  # 封印時はラベル表示しない
+            elif oni_seal_image is not None:
+                # クリア前は封印状態（未クリア）で、鬼封印.pngを表示
+                seal_scaled = pygame.transform.smoothscale(oni_seal_image, PLAYER_GIF_SIZE)
+                seal_x = middle_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                seal_y = middle_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                screen.blit(seal_scaled, (seal_x, seal_y))
+                middle_boss_label = None  # 封印時はラベル表示しない
+            else:
+                # 封印画像が無い場合は従来どおりクリア済み後の扉を表示
+                if oni_door_image is not None:
+                    door_scaled = pygame.transform.smoothscale(oni_door_image, PLAYER_GIF_SIZE)
+                    door_x = middle_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                    door_y = middle_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                    screen.blit(door_scaled, (door_x, door_y))
+                    middle_boss_label = None  # 扉画像時はラベル表示しない
+                else:
+                    pygame.draw.rect(screen, BLACK, middle_boss_portal, border_radius=5)
+                    pygame.draw.rect(screen, (255, 140, 0), middle_boss_portal, 2, border_radius=5)
+                    middle_boss_label = "赤鬼"
+                    middle_boss_label_color = (255, 140, 0)
+
+            # 玉藻前入り口：一度クリアしたら封印画像（通行止め）にする
+            if defeated_mid_boss:
+                # 赤鬼クリア後は玉藻前の扉を封印画像（通行止め）にする
+                if tama_seal_image is not None:
+                    seal_scaled = pygame.transform.smoothscale(tama_seal_image, PLAYER_GIF_SIZE)
+                    seal_x = hidden_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                    seal_y = hidden_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                    screen.blit(seal_scaled, (seal_x, seal_y))
+                    hidden_boss_label = None  # 封印時はラベル表示しない
+                else:
+                    pygame.draw.rect(screen, BLACK, hidden_boss_portal, border_radius=5)
+                    pygame.draw.rect(screen, (100, 100, 100), hidden_boss_portal, 2, border_radius=5)
+                    hidden_boss_label = None  # 封印時はラベル表示しない
+            elif tama_seal_image is not None:
+                # クリア前は封印状態（未クリア）で、たま封印.pngを表示
+                seal_scaled = pygame.transform.smoothscale(tama_seal_image, PLAYER_GIF_SIZE)
+                seal_x = hidden_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                seal_y = hidden_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                screen.blit(seal_scaled, (seal_x, seal_y))
+                hidden_boss_label = None  # 封印時はラベル表示しない
+            else:
+                # 封印画像が無い場合は従来どおりクリア済み後の扉を表示
+                if tama_door_image is not None:
+                    door_scaled = pygame.transform.smoothscale(tama_door_image, PLAYER_GIF_SIZE)
+                    door_x = hidden_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                    door_y = hidden_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                    screen.blit(door_scaled, (door_x, door_y))
+                    hidden_boss_label = None  # 扉画像時はラベル表示しない
+                else:
+                    pygame.draw.rect(screen, BLACK, hidden_boss_portal, border_radius=5)
+                    pygame.draw.rect(screen, PURPLE, hidden_boss_portal, 2, border_radius=5)
+                    hidden_boss_label = "玉藻前"
+                    hidden_boss_label_color = PURPLE
+
+            # 神殿の背景に合わせて白縁で読みやすくする（ラベルがNoneのものはスキップ）
+            portal_labels = []
+            portal_labels.append(("唐笠お化け", GOLD, normal_boss_portal))
+            if middle_boss_label is not None:
+                portal_labels.append((middle_boss_label, middle_boss_label_color, middle_boss_portal))
+            if hidden_boss_label is not None:
+                portal_labels.append((hidden_boss_label, hidden_boss_label_color, hidden_boss_portal))
             for text, color, portal in portal_labels:
                 label = font.render(text, True, color)
                 edge = font.render(text, True, WHITE)
@@ -4360,7 +4680,33 @@ def main():
             powerup.draw(screen)
 
         effects.draw(screen)
-        player.draw(screen)
+        # 部屋への入室アニメーション中はアニメーションと後ろ向きプレイヤーを表示
+        if door_anim_active and door_anim_frames:
+            # 扉の開くアニメーションを扉位置で再生（高さはプレイヤーの足元＝ポータル下端に合わせる）
+            anim_frame = door_anim_frames[min(door_anim_frame_index, len(door_anim_frames) - 1)]
+            if door_anim_portal is not None:
+                # X軸はポータルの中心、Y軸はポータルの下端（プレイヤーの足元高さ）に合わせる
+                anim_x = door_anim_portal.centerx - anim_frame.get_width() // 2
+                anim_y = door_anim_portal.bottom - anim_frame.get_height()
+            else:
+                anim_x = SCREEN_WIDTH // 2 - anim_frame.get_width() // 2
+                anim_y = SCREEN_HEIGHT // 2 - anim_frame.get_height() // 2
+            screen.blit(anim_frame, (anim_x, anim_y))
+
+            # プレイヤーを後ろ向き画像で表示（プレイヤー位置、足元基準）
+            if player_back_image is not None:
+                back_scaled = pygame.transform.smoothscale(player_back_image, PLAYER_GIF_SIZE)
+                foot_anchor_y = player.y + 28
+                back_draw_y = int(foot_anchor_y - back_scaled.get_height() + 10)
+                screen.blit(back_scaled, (int(player.x - back_scaled.get_width() / 2), back_draw_y))
+            else:
+                # 後ろ.pngが無い場合はプレイヤー画像を横反転して表示
+                back_image = pygame.transform.flip(player_image, True, False)
+                foot_anchor_y = player.y + 28
+                back_draw_y = int(foot_anchor_y - back_image.get_height() + 10)
+                screen.blit(back_image, (int(player.x - back_image.get_width() / 2), back_draw_y))
+        else:
+            player.draw(screen)
 
         # --- UI表示 ---
         # プレイヤーの体力をハートで表示 (左上)
