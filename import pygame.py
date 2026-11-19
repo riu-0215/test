@@ -663,6 +663,17 @@ if _tama_seal_path.exists():
 else:
     tama_seal_image = None
 
+# 撃破済みボスの入口に表示する画像
+_boss_defeated_path = asset_dir / "撃破.png"
+if _boss_defeated_path.exists():
+    try:
+        boss_defeated_image = pygame.image.load(str(_boss_defeated_path)).convert_alpha()
+    except (pygame.error, OSError):
+        print(f"画像読み込みに失敗しました: {_boss_defeated_path}")
+        boss_defeated_image = None
+else:
+    boss_defeated_image = None
+
 # 扉画像（入室可能時、障子のようにプレイヤーサイズで表示）
 # 唐笠扉.png：唐笠お化け（ステージ4）への入り口
 _tora_door_path = asset_dir / "唐笠扉.png"
@@ -4315,6 +4326,7 @@ def main():
     # ボスクリアフラグ（ボス部屋への入室順序制御用）
     defeated_normal_boss = False  # 唐笠お化け（ステージ4）を倒したか
     defeated_mid_boss = False     # 赤鬼（ステージ5）を倒したか
+    defeated_hidden_boss = False  # 玉藻前（ステージ6）を倒したか
     # 部屋への入室アニメーション用
     door_anim_frames = []        # 入室アニメーションのフレームリスト
     door_anim_frame_index = 0    # 現在のフレームインデックス
@@ -4442,6 +4454,8 @@ def main():
                     defeated_normal_boss = True  # 唐笠お化けクリア
                 elif current_stage == 5:
                     defeated_mid_boss = True     # 赤鬼クリア
+                elif current_stage == 6:
+                    defeated_hidden_boss = True  # 玉藻前クリア
 
         # 体力がなくなった敵を削除
         enemies = [e for e in enemies if e.health > 0]
@@ -4454,8 +4468,8 @@ def main():
             keys = pygame.key.get_pressed()
             # 部屋への入室アニメーションが再生中でなければ、新しい入室を開始できる
             if not door_anim_active:
-                if player.rect.colliderect(normal_boss_portal) and (keys[pygame.K_UP] or keys[pygame.K_w]):
-                    # 唐笠お化け（ステージ4）：最初から入室可能
+                if not defeated_normal_boss and player.rect.colliderect(normal_boss_portal) and (keys[pygame.K_UP] or keys[pygame.K_w]):
+                    # 唐笠お化け（ステージ4）：未撃破なら入室可能
                     door_anim_frames = load_animated_gif_frames(asset_dir / "唐笠開く.gif", PLAYER_GIF_SIZE)
                     door_anim_frame_index = 0
                     door_anim_timer = 0
@@ -4463,8 +4477,8 @@ def main():
                     door_anim_portal = normal_boss_portal
                     door_anim_active = True
                 elif player.rect.colliderect(middle_boss_portal) and (keys[pygame.K_UP] or keys[pygame.K_w]):
-                    if defeated_normal_boss:
-                        # 唐笠お化けクリア後のみ赤鬼（ステージ5）に入室可能
+                    if defeated_normal_boss and not defeated_mid_boss:
+                        # 唐笠お化けクリア後、赤鬼未撃破の場合のみ入室可能
                         door_anim_frames = load_animated_gif_frames(asset_dir / "鬼開く.gif", PLAYER_GIF_SIZE)
                         door_anim_frame_index = 0
                         door_anim_timer = 0
@@ -4475,8 +4489,8 @@ def main():
                         # 未クリアの場合は入室拒否（何もしない）
                         pass
                 elif player.rect.colliderect(hidden_boss_portal) and (keys[pygame.K_UP] or keys[pygame.K_w]):
-                    if defeated_mid_boss:
-                        # 赤鬼クリア後のみ玉藻前（ステージ6）に入室可能
+                    if defeated_mid_boss and not defeated_hidden_boss:
+                        # 赤鬼クリア後、玉藻前未撃破の場合のみ入室可能
                         door_anim_frames = load_animated_gif_frames(asset_dir / "たま開く.gif", PLAYER_GIF_SIZE)
                         door_anim_frame_index = 0
                         door_anim_timer = 0
@@ -4569,91 +4583,97 @@ def main():
             hidden_boss_portal = PRACTICE_PORTALS[6]
             normal_boss_portal = PRACTICE_PORTALS[4]
 
-            # 唐笠お化け入り口（常に入室可能）
+            # 唐笠お化けの入口は、撃破後は撃破画像に切り替える
             pygame.draw.rect(screen, BLACK, normal_boss_portal, border_radius=5)
             pygame.draw.rect(screen, GOLD, normal_boss_portal, 2, border_radius=5)
-
-            # 唐笠お化け入り口（常に入室可能）。唐笠扉.pngをプレイヤーサイズで障子のように表示（ポータル下端＝プレイヤー足元に合わせる）
-            if tora_door_image is not None:
+            if defeated_normal_boss and boss_defeated_image is not None:
+                defeated_scaled = pygame.transform.smoothscale(boss_defeated_image, PLAYER_GIF_SIZE)
+                defeated_x = normal_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                defeated_y = normal_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                screen.blit(defeated_scaled, (defeated_x, defeated_y))
+            elif not defeated_normal_boss and tora_door_image is not None:
                 door_scaled = pygame.transform.smoothscale(tora_door_image, PLAYER_GIF_SIZE)
                 door_x = normal_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
                 door_y = normal_boss_portal.bottom - PLAYER_GIF_SIZE[1]
                 screen.blit(door_scaled, (door_x, door_y))
-            else:
+            elif not defeated_normal_boss:
                 pygame.draw.rect(screen, BLACK, normal_boss_portal, border_radius=5)
                 pygame.draw.rect(screen, GOLD, normal_boss_portal, 2, border_radius=5)
 
-            # 赤鬼入り口：一度クリアしたら封印画像（通行止め）にする
-            if defeated_normal_boss:
-                # 唐笠お化けクリア後は赤鬼の扉を封印画像（通行止め）にする
-                if oni_seal_image is not None:
-                    seal_scaled = pygame.transform.smoothscale(oni_seal_image, PLAYER_GIF_SIZE)
-                    seal_x = middle_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
-                    seal_y = middle_boss_portal.bottom - PLAYER_GIF_SIZE[1]
-                    screen.blit(seal_scaled, (seal_x, seal_y))
-                    middle_boss_label = None  # 封印時はラベル表示しない
+            # 赤鬼の入口は、唐笠お化け撃破後に開き、赤鬼撃破後は撃破画像にする
+            if defeated_mid_boss:
+                if boss_defeated_image is not None:
+                    defeated_scaled = pygame.transform.smoothscale(boss_defeated_image, PLAYER_GIF_SIZE)
+                    defeated_x = middle_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                    defeated_y = middle_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                    screen.blit(defeated_scaled, (defeated_x, defeated_y))
+                    middle_boss_label = None
                 else:
                     pygame.draw.rect(screen, BLACK, middle_boss_portal, border_radius=5)
                     pygame.draw.rect(screen, (100, 100, 100), middle_boss_portal, 2, border_radius=5)
-                    middle_boss_label = None  # 封印時はラベル表示しない
-            elif oni_seal_image is not None:
-                # クリア前は封印状態（未クリア）で、鬼封印.pngを表示
-                seal_scaled = pygame.transform.smoothscale(oni_seal_image, PLAYER_GIF_SIZE)
-                seal_x = middle_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
-                seal_y = middle_boss_portal.bottom - PLAYER_GIF_SIZE[1]
-                screen.blit(seal_scaled, (seal_x, seal_y))
-                middle_boss_label = None  # 封印時はラベル表示しない
-            else:
-                # 封印画像が無い場合は従来どおりクリア済み後の扉を表示
+                    middle_boss_label = None
+            elif defeated_normal_boss:
                 if oni_door_image is not None:
                     door_scaled = pygame.transform.smoothscale(oni_door_image, PLAYER_GIF_SIZE)
                     door_x = middle_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
                     door_y = middle_boss_portal.bottom - PLAYER_GIF_SIZE[1]
                     screen.blit(door_scaled, (door_x, door_y))
-                    middle_boss_label = None  # 扉画像時はラベル表示しない
+                    middle_boss_label = None
                 else:
                     pygame.draw.rect(screen, BLACK, middle_boss_portal, border_radius=5)
                     pygame.draw.rect(screen, (255, 140, 0), middle_boss_portal, 2, border_radius=5)
                     middle_boss_label = "赤鬼"
                     middle_boss_label_color = (255, 140, 0)
+            elif oni_seal_image is not None:
+                seal_scaled = pygame.transform.smoothscale(oni_seal_image, PLAYER_GIF_SIZE)
+                seal_x = middle_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                seal_y = middle_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                screen.blit(seal_scaled, (seal_x, seal_y))
+                middle_boss_label = None
+            else:
+                pygame.draw.rect(screen, BLACK, middle_boss_portal, border_radius=5)
+                pygame.draw.rect(screen, (100, 100, 100), middle_boss_portal, 2, border_radius=5)
+                middle_boss_label = "赤鬼"
+                middle_boss_label_color = (255, 140, 0)
 
-            # 玉藻前入り口：一度クリアしたら封印画像（通行止め）にする
-            if defeated_mid_boss:
-                # 赤鬼クリア後は玉藻前の扉を封印画像（通行止め）にする
-                if tama_seal_image is not None:
-                    seal_scaled = pygame.transform.smoothscale(tama_seal_image, PLAYER_GIF_SIZE)
-                    seal_x = hidden_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
-                    seal_y = hidden_boss_portal.bottom - PLAYER_GIF_SIZE[1]
-                    screen.blit(seal_scaled, (seal_x, seal_y))
-                    hidden_boss_label = None  # 封印時はラベル表示しない
+            # 玉藻前の入口は、赤鬼撃破後に開き、玉藻前撃破後は撃破画像にする
+            if defeated_hidden_boss:
+                if boss_defeated_image is not None:
+                    defeated_scaled = pygame.transform.smoothscale(boss_defeated_image, PLAYER_GIF_SIZE)
+                    defeated_x = hidden_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                    defeated_y = hidden_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                    screen.blit(defeated_scaled, (defeated_x, defeated_y))
+                    hidden_boss_label = None
                 else:
                     pygame.draw.rect(screen, BLACK, hidden_boss_portal, border_radius=5)
                     pygame.draw.rect(screen, (100, 100, 100), hidden_boss_portal, 2, border_radius=5)
-                    hidden_boss_label = None  # 封印時はラベル表示しない
-            elif tama_seal_image is not None:
-                # クリア前は封印状態（未クリア）で、たま封印.pngを表示
-                seal_scaled = pygame.transform.smoothscale(tama_seal_image, PLAYER_GIF_SIZE)
-                seal_x = hidden_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
-                seal_y = hidden_boss_portal.bottom - PLAYER_GIF_SIZE[1]
-                screen.blit(seal_scaled, (seal_x, seal_y))
-                hidden_boss_label = None  # 封印時はラベル表示しない
-            else:
-                # 封印画像が無い場合は従来どおりクリア済み後の扉を表示
+                    hidden_boss_label = None
+            elif defeated_mid_boss:
                 if tama_door_image is not None:
                     door_scaled = pygame.transform.smoothscale(tama_door_image, PLAYER_GIF_SIZE)
                     door_x = hidden_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
                     door_y = hidden_boss_portal.bottom - PLAYER_GIF_SIZE[1]
                     screen.blit(door_scaled, (door_x, door_y))
-                    hidden_boss_label = None  # 扉画像時はラベル表示しない
+                    hidden_boss_label = None
                 else:
                     pygame.draw.rect(screen, BLACK, hidden_boss_portal, border_radius=5)
                     pygame.draw.rect(screen, PURPLE, hidden_boss_portal, 2, border_radius=5)
                     hidden_boss_label = "玉藻前"
                     hidden_boss_label_color = PURPLE
+            elif tama_seal_image is not None:
+                seal_scaled = pygame.transform.smoothscale(tama_seal_image, PLAYER_GIF_SIZE)
+                seal_x = hidden_boss_portal.centerx - PLAYER_GIF_SIZE[0] // 2
+                seal_y = hidden_boss_portal.bottom - PLAYER_GIF_SIZE[1]
+                screen.blit(seal_scaled, (seal_x, seal_y))
+                hidden_boss_label = None
+            else:
+                pygame.draw.rect(screen, BLACK, hidden_boss_portal, border_radius=5)
+                pygame.draw.rect(screen, (100, 100, 100), hidden_boss_portal, 2, border_radius=5)
+                hidden_boss_label = "玉藻前"
+                hidden_boss_label_color = PURPLE
 
             # 神殿の背景に合わせて白縁で読みやすくする（ラベルがNoneのものはスキップ）
             portal_labels = []
-            portal_labels.append(("唐笠お化け", GOLD, normal_boss_portal))
             if middle_boss_label is not None:
                 portal_labels.append((middle_boss_label, middle_boss_label_color, middle_boss_portal))
             if hidden_boss_label is not None:
