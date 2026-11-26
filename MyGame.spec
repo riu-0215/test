@@ -8,7 +8,7 @@ a = Analysis(
     ['bosgame.py'],
     pathex=[],
     binaries=[],
-    datas=[('TangazaGame', 'TangazaGame')],
+    datas=[('*.png', '.'), ('*.gif', '.'), ('*.mp3', '.'), ('*.txt', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
