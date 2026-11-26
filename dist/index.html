@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Player Walk Animation</title>
+    <style>
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: #d9d9d9;
+        display: grid;
+        place-items: center;
+        font-family: sans-serif;
+      }
+
+      canvas {
+        width: min(90vmin, 800px);
+        height: min(90vmin, 600px);
+        background: #d9d9d9;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game" width="800" height="600"></canvas>
+
+    <script>
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d');
+
+      const sprite = new Image();
+      sprite.src = 'player.png';
+
+      const keys = {
+        ArrowUp: false,
+        ArrowDown: false,
+        ArrowLeft: false,
+        ArrowRight: false,
+        w: false,
+        a: false,
+        s: false,
+        d: false,
+      };
+
+      const player = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        speed: 220,
+        facing: 1,
+        walkTime: 0,
+      };
+
+      function isMoving() {
+        return (
+          keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight ||
+          keys.w || keys.s || keys.a || keys.d
+        );
+      }
+
+      function update(dt) {
+        let dx = 0;
+        let dy = 0;
+
+        if (keys.ArrowLeft || keys.a) dx -= 1;
+        if (keys.ArrowRight || keys.d) dx += 1;
+        if (keys.ArrowUp || keys.w) dy -= 1;
+        if (keys.ArrowDown || keys.s) dy += 1;
+
+        if (dx !== 0 || dy !== 0) {
+          const length = Math.hypot(dx, dy) || 1;
+          dx /= length;
+          dy /= length;
+
+          player.x += dx * player.speed * dt;
+          player.y += dy * player.speed * dt;
+
+          if (dx !== 0) player.facing = dx > 0 ? 1 : -1;
+
+          player.walkTime += dt * 10;
+        } else {
+          player.walkTime = 0;
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Simple floor visual
+        ctx.fillStyle = '#cfcfcf';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const moving = isMoving();
+        const bob = moving ? Math.sin(player.walkTime) * 8 : 0;
+        const flip = player.facing < 0;
+
+        ctx.save();
+        ctx.translate(player.x, player.y + bob);
+        ctx.scale(flip ? -1 : 1, 1);
+
+        if (sprite.complete) {
+          const w = sprite.width;
+          const h = sprite.height;
+          ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
+        } else {
+          ctx.fillStyle = '#ff0000';
+          ctx.fillRect(-30, -60, 60, 120);
+        }
+
+        ctx.restore();
+      }
+
+      function loop(ts) {
+        const prev = loop.lastTs ?? ts;
+        const dt = Math.min((ts - prev) / 1000, 0.033);
+        loop.lastTs = ts;
+
+        update(dt);
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key in keys) {
+          keys[e.key] = true;
+          e.preventDefault();
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.key in keys) {
+          keys[e.key] = false;
+          e.preventDefault();
+        }
+      });
+
+      sprite.onload = () => {
+        requestAnimationFrame(loop);
+      };
+
+      if (sprite.complete) {
+        requestAnimationFrame(loop);
+      }
+    </script>
+  </body>
+</html>

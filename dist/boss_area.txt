@@ -1,0 +1,95 @@
+2101 | 
+2102 |         # ジャンプ着地攻撃の範囲表示
+2103 |         if self.jump_attack_active:
+2104 |             pygame.draw.circle(surface, RED, (int(self.x), int(self.y + 45)), 110, 2)
+2105 |         elif self.jump_attack_effect_timer > 0:
+2106 |             radius = 80 + (45 - self.jump_attack_effect_timer) * 1
+2107 |             effect_color = WHITE if self.jump_attack_effect_timer <= 15 else (255, 140, 0)
+2108 |             pygame.draw.circle(surface, effect_color, (int(self.x), int(self.y + 45)), radius, 4)
+2109 | 
+2110 |         # 下から傘を突き上げる攻撃。
+2111 |         # 予告は段階的: ①ボス足元の赤い溜め → ②出現位置を発射順に順次表示 →
+2112 |         # ③発射直前は全マーカー白高速点滅。発生中は地面から波状に傘を生やす。
+2113 |         upthrust_phase = self.upthrust_phase()
+2114 |         if upthrust_phase is not None:
+2115 |             ground_y = int(self.y + 50)
+2116 |             if upthrust_phase == "WINDUP":
+2117 |                 elapsed = BOSS_UPTHRUST_TOTAL_FRAMES - self.upthrust_timer
+2118 |                 progress = min(1.0, elapsed / BOSS_UPTHRUST_WINDUP_FRAMES)
+2119 | 
+2120 |                 # ── わかりやすい溜め演出 ──
+2121 |                 # ボス頭上にチャージゲージ(溜まり具合が一目で分かる)
+2122 |                 gauge_w = 76
+2123 |                 gauge_x = int(self.x - gauge_w / 2)
+2124 |                 gauge_y = int(self.y - 110)
+2125 |                 pygame.draw.rect(surface, (60, 60, 60), (gauge_x, gauge_y, gauge_w, 10))
+2126 |                 fill_w = int(gauge_w * progress)
+2127 |                 # 最後は白く光って発射直前を強調
+2128 |                 gauge_color = WHITE if progress >= 0.85 else (220, 40, 40)
+2129 |                 if fill_w > 0:
+2130 |                     pygame.draw.rect(surface, gauge_color, (gauge_x, gauge_y, fill_w, 10))
+2131 |                 pygame.draw.rect(surface, (255, 255, 255), (gauge_x, gauge_y, gauge_w, 10), 1)
+2132 | 
+2133 |                 # ボス足元の赤い溜めリング(溜めるほど広く速く脈動)
+2134 |                 pulse_phase = int(elapsed / max(2, 5 - int(progress * 3)))
+2135 |                 ring_radius = 26 + int(progress * 26) + (4 if pulse_phase % 2 == 0 else 0)
+2136 |                 pygame.draw.circle(surface, (220, 40, 40), (int(self.x), ground_y),
+2137 |                                    ring_radius, 3)
+2138 | 
+2139 |                 if elapsed < BOSS_UPTHRUST_MARKER_FIRST_FRAME:
+2140 |                     # ① 前半: 溜めリングとゲージのみで「準備中」を示す
+2141 |                     pass
+2142 |                 else:
+2143 |                     # ② 後半: 各波の出現位置をボスから遠い順(=発射順)に順次表示
+2144 |                     imminent = elapsed >= BOSS_UPTHRUST_WINDUP_FRAMES - 12
+2145 |                     for wave_i, wave in enumerate(self.upthrust_waves):
+2146 |                         marker_appear = (BOSS_UPTHRUST_MARKER_FIRST_FRAME
+2147 |                                          + wave_i * BOSS_UPTHRUST_MARKER_STAGGER)
+2148 |                         if elapsed < marker_appear:
+2149 |                             continue
+2150 |                         if imminent:
+2151 |                             # ③ 発射直前: 全マーカーを白く高速点滅
+2152 |                             if (elapsed // 2) % 2 == 0:
+2153 |                                 marker_color = WHITE
+2154 |                             else:
+2155 |                                 continue
+2156 |                         else:
+2157 |                             marker_color = RED
+2158 |                         wave_x = int(wave["x"])
+2159 |                         pygame.draw.rect(surface, marker_color, (wave_x - 22, ground_y - 44, 44, 44), 2)
+2160 |             elif boss_upthrust_bounds.width > 0 and boss_upthrust_bounds.height > 0:
+2161 |                 wave_life = BOSS_UPTHRUST_WAVE_RISE_FRAMES + BOSS_UPTHRUST_WAVE_HOLD_FRAMES
+2162 |                 rise_px = 76  # 地面から顔を出す距離(傘のサイズに合わせる)
+2163 |                 for wave in self.upthrust_waves:
+2164 |                     age = wave["age"]
+2165 |                     if age < 0 or age >= wave_life:
+2166 |                         continue
+2167 |                     # 伸び上がるほど下から顔を出す(波のように順に生える)
+2168 |                     progress = min(1.0, age / BOSS_UPTHRUST_WAVE_RISE_FRAMES)
+2169 |                     offset_y = int(rise_px * (1.0 - progress))
+2170 |                     image_x = int(wave["x"] - boss_upthrust_bounds.centerx)
+2171 |                     image_y = ground_y - boss_upthrust_bounds.bottom + offset_y
+2172 |                     surface.blit(boss_upthrust_image, (image_x, image_y))
+2173 |                     if progress < 1.0:
+2174 |                         # 伸び上がり中は傘の頂点に白いラインを付けて動きを見やすくする
+2175 |                         tip_top = image_y + boss_upthrust_bounds.y
+2176 |                         pygame.draw.line(
+2177 |                             surface, WHITE,
+2178 |                             (int(wave["x"]) - 12, tip_top),
+2179 |                             (int(wave["x"]) + 12, tip_top),
+2180 |                             3,
+2181 |                         )
+2182 | 
+2183 | class MidBoss(Boss):
+2184 |     def __init__(self, x, y):
+2185 |         super().__init__(x, y)
+2186 |         self.max_health = 30
+2187 |         self.health = self.max_health
+2188 |         self.phase = "IDLE"
+2189 |         self.phase_timer = 0
+2190 |         self.dash_count = 0
+2191 |         self.dash_dir = 1
+2192 |         # 突進は速く(5.8→8.5)。予測線を出すぶん速度で圧をかける。
+2193 |         self.dash_speed = 8.5
+2194 |         self.warning_timer = 0
+2195 |         self.dash_dx = 1.0
