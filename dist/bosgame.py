@@ -1,7 +1,24 @@
 ﻿import pygame
 
+import os
+import sys
+
+if getattr(sys, 'frozen', False):
+    os.chdir(sys._MEIPASS)
+
 import sys
 import os
+
+import sys
+from pathlib import Path
+
+def resource_path(relative_path):
+    if getattr(sys, 'frozen', False):
+        base_path = Path(sys._MEIPASS)
+    else:
+        base_path = Path(__file__).resolve().parent
+
+    return base_path / relative_path
 
 def resource_path(relative_path):
     """通常実行時とexe実行時の両方に対応"""
@@ -13,7 +30,6 @@ def resource_path(relative_path):
         )
 
     return os.path.join(base_path, relative_path)
-
 from pathlib import Path
 from PIL import Image, ImageSequence
 
