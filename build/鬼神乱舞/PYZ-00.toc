@@ -1,4 +1,4 @@
-('C:\\Users\\Student\\Desktop\\test - コピー\\build\\MyGame\\PYZ-00.pyz',
+('C:\\Users\\Student\\Desktop\\test - コピー\\build\\鬼神乱舞\\PYZ-00.pyz',
  [('PIL',
    'C:\\Users\\Student\\AppData\\Local\\Programs\\Python\\Python37\\lib\\site-packages\\PIL\\__init__.py',
    'PYMODULE'),

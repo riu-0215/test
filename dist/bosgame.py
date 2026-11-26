@@ -3,6 +3,17 @@
 import os
 import sys
 
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+import os
+import sys
+
 if getattr(sys, 'frozen', False):
     os.chdir(sys._MEIPASS)
 
